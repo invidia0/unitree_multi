@@ -15,16 +15,17 @@ TO DO:
 RRTStar::RRTStar()
 {
 	bringup();
+
 	/*
 	Points are vectors! The first element is the x coordinate, the second is the y coordinate,
 	and the third is the z coordinate.
 	*/
 
 	// initialize the x_start_ = {x, y, z}; vector
-	x_start_ = {-8, -7, -9};
+	// x_start_ = {};
 
 	// x_goal_ = {x, y, z};
-	x_goal_ = {9, 5, 8};
+	// x_goal_ = {};
 
 	// epsilon_ = distance between nodes
 	epsilon_ = 1.0;
@@ -33,8 +34,8 @@ RRTStar::RRTStar()
 	d_ = 10.0;
 
 	// n_ob = number of obstacles
-	int n_ob = 1;
-	double r_max = 1.0;
+	// int n_ob = 1;
+	// double r_max = 1.0;
 
 	// Map limits
 	int xmin = -10;
@@ -51,19 +52,19 @@ RRTStar::RRTStar()
 	srand(time(NULL));
 
 	// Obstacles vector clearup
-	obstacles_.clear();
+	// obstacles_.clear();
 
 	// Generate random SPHERE obstacles.
-	while (obstacles_.size() < n_ob && ros::ok())
-	{
-		sphere_obstacle new_ob;
-		new_ob.radius = (double)random() / RAND_MAX * r_max;
-		new_ob.center = randomPoint();
-		if (euclideanDistance(new_ob.center, x_start_) > new_ob.radius && euclideanDistance(new_ob.center, x_goal_) > new_ob.radius)
-		{
-			obstacles_.push_back(new_ob);
-		}
-	}
+	// while (obstacles_.size() < n_ob && ros::ok())
+	// {
+	// 	sphere_obstacle new_ob;
+	// 	new_ob.radius = (double)random() / RAND_MAX * r_max;
+	// 	new_ob.center = randomPoint();
+	// 	if (euclideanDistance(new_ob.center, x_start_) > new_ob.radius && euclideanDistance(new_ob.center, x_goal_) > new_ob.radius)
+	// 	{
+	// 		obstacles_.push_back(new_ob);
+	// 	}
+	// }
 
 	// Max number of iterations.
 	it_max_ = 500;
@@ -77,6 +78,10 @@ void RRTStar::bringup()
 	obs_sub_ = nh_.subscribe("/a1/obstacles", 1, &RRTStar::obstaclesCallback, this);
 	goal_sub_ = nh_.subscribe("/a1/goal", 1, &RRTStar::goalCallback, this);
 
+	while (!goal_received_ && !init_received_ && !obs_1_received_ && !obs_1_received_)
+	{
+		ros::spinOnce();
+	}
 
 }
 
@@ -108,7 +113,7 @@ void RRTStar::initialize()
 	plotPoint(x_goal_, {0.4, 0.4, 0.6});
 
 	// Plot the obstacles on the map
-	plotObstacles();
+	// plotObstacles();
 
 	// This should be improved
 	mu_free_ = 1.;
@@ -495,51 +500,40 @@ void RRTStar::obstaclesCallback(const visualization_msgs::MarkerArray::ConstPtr&
 		{
 			ROS_INFO("Obstacle 1 received!");
 			tmp = msg->markers[i];
-			obsList.push_back(tmp);
-			check_obs_1 = true;
+			obstacles_.push_back(tmp);
+			obs_1_received_ = true;
 		}
 		else if (msg->markers[i].id == 101 && check_obs_2 == false)
 		{
 			ROS_INFO("Obstacle 2 received!");
 			tmp = msg->markers[i];
-			obsList.push_back(tmp);
-			check_obs_2 = true;
+			obstacles_.push_back(tmp);
+			obs_2_received_ = true;
 		}
 	}
 }
 void RRTStar::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& data)
 {
 	//Set goal
-	if (!goal_received)
+	if (!goal_received_)
 	{
-		goal.point.x = data->pose.position.x;
-		goal.point.y = data->pose.position.y;
-		goal.id = -1;
+		x_goal_ = {data->pose.position.x, data->pose.position.y};
 
-		goal_received = true;
+		goal_received_ = true;
 
 		ROS_INFO("Goal received!");
-		ROS_INFO("Goal x: %f", goal.point.x);
-		ROS_INFO("Goal y: %f", goal.point.y);
 	}
 }
 void RRTStar::a1PoseCallback(const nav_msgs::Odometry::ConstPtr& data)
 {
 	//Set initial position
-	if (!init_received)
+	if (!init_received_)
 	{
-		init.point.x = data->pose.pose.position.x;
-		init.point.y = data->pose.pose.position.y;
-		init.id = -2;
-		init.parent_id = -3;
+		x_start_ = {data->pose.pose.position.x, data->pose.pose.position.y};
 
-		tree.push_back(init);
-
-		init_received = true;
+		init_received_ = true;
 
 		ROS_INFO("Initial position received!");
-		ROS_INFO("Initial x: %f", init.point.x);
-		ROS_INFO("Initial y: %f", init.point.y);
 	}
 }
 void RRTStar::spinner()

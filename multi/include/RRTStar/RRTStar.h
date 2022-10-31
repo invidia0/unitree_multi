@@ -56,15 +56,21 @@ private:
 	std::vector<node> graph_;
 	std::vector<double> x_start_;
 	std::vector<double> x_goal_;
+	std::vector<nav_msgs::Path> path_;
+	std::vector<visualization_msgs::Marker> obstacles_;
 	double epsilon_;
 	double d_;
 	double mu_free_;
 	double z_d_;
 	std::vector<int> lim_;
-	std::vector<sphere_obstacle> obstacles_;
+	//std::vector<sphere_obstacle> obstacles_;
 	int it_max_;
 	bool finish_;
 	int it_;
+	bool goal_received_;
+	bool init_received_;
+	bool obs_1_received_;
+	bool obs_2_received_;
 };
 
 #endif /* RRTSTAR_H */
