@@ -1,15 +1,3 @@
-/*
-
-===============================================================================
-TO DO:
-1. Start point must be taken from the robot position
-2. Goal point must be taken from the user input on RVIZ (click on the map)
-3. Obstacles must be taken from the map
-4. Make a collision check function for a generic obstacle not only spherical
-5. Make a function to check if the goal is reachable from the start point with it_max_ iterations
-===============================================================================
-
-*/
 #include "RRTStar/RRTStar.h"
 
 RRTStar::RRTStar()
@@ -35,7 +23,9 @@ RRTStar::RRTStar()
 	// Map limits vector
 	lim_ = {xmin, xmax, ymin, ymax, zmin, zmax};
 
-	ROS_INFO("RRTStar node started");
+	std::cout << "================================" << std::endl;
+	std::cout << "===> RRT* algorithm started <===" << std::endl;
+	std::cout << "================================" << std::endl;
 
 	bringup();
 
@@ -44,48 +34,26 @@ RRTStar::RRTStar()
 	and the third is the z coordinate.
 	*/
 
-	// initialize the x_start_ = {x, y, z}; vector
-	// x_start_ = {};
-
-	// x_goal_ = {x, y, z};
-	// x_goal_ = {};
-
-	// n_ob = number of obstacles
-	// int n_ob = 1;
-	// double r_max = 1.0;
-
 	// Random generator
 	srand(time(NULL));
 
-	// Obstacles vector clearup
-	// obstacles_.clear();
-
-	// Generate random SPHERE obstacles.
-	// while (obstacles_.size() < n_ob && ros::ok())
-	// {
-	// 	sphere_obstacle new_ob;
-	// 	new_ob.radius = (double)random() / RAND_MAX * r_max;
-	// 	new_ob.center = randomPoint();
-	// 	if (euclideanDistance(new_ob.center, x_start_) > new_ob.radius && euclideanDistance(new_ob.center, x_goal_) > new_ob.radius)
-	// 	{
-	// 		obstacles_.push_back(new_ob);
-	// 	}
-	// }
-
+	std::cout << "================================" << std::endl;
 	initialize();
 }
 
 void RRTStar::bringup()
 {
 	marker_pub_ = nh_.advertise<visualization_msgs::Marker>("visualization_marker", 10);
+    path_pub_ = nh_.advertise<nav_msgs::Path>("path", 1);
 
 	a1_pose_sub_ = nh_.subscribe("/a1_gazebo/a1/odom", 1, &RRTStar::a1PoseCallback, this);
 	obs_sub_ = nh_.subscribe("visualization_marker_array", 1, &RRTStar::obstaclesCallback, this);
 	goal_sub_ = nh_.subscribe("move_base_simple/goal", 1, &RRTStar::goalCallback, this);
 
+	std::cout << ">> Subscribers and publishers initialized" << std::endl;
+	std::cout << ">> Waiting for the robot pose, goal and obstacles..." << std::endl;
 	while (ros::ok)
 	{
-		ROS_INFO_ONCE("Waiting for goal, initial position and obstacles");
 		ros::spinOnce();
 		if (goal_received_ && init_received_ && obs_1_received_ && obs_2_received_)
 		{
@@ -97,7 +65,6 @@ void RRTStar::bringup()
 
 void RRTStar::initialize()
 {
-	ROS_INFO("RRTStar node initialized");
 	// Publisher for the tree graph
 	ros::Duration(1).sleep();
 
@@ -137,7 +104,7 @@ void RRTStar::initialize()
 	finish_ = false;
 
 	// How many iterations
-	std::cout << "\nInsert maximum iteration number: " << std::endl;
+	std::cout << ">> Insert maximum iteration number: ";
 	std::cin >> it_max_;
 
 	// Solve the graph
@@ -177,22 +144,16 @@ void RRTStar::plotPoint()
 	marker_pub_.publish(end);  
 }
 
-// void RRTStar::plotObstacles()
-// {
-// 	for (auto &x : obstacles_)
-// 		plotPoint(x.center, {0, 0.75, 0.75}, x.radius / 0.01);
-// }
-
-void RRTStar::plotLine(std::vector<double> x1, std::vector<double> x2, std::vector<double> c, double w)
+void RRTStar::plotLine(std::vector<double> x1, std::vector<double> x2, std::vector<double> c, double i)
 {
 	marker_.type = visualization_msgs::Marker::LINE_LIST;
 	marker_.header.frame_id = "map";
 	marker_.header.stamp = ros::Time::now();
 	marker_.ns = "RRTStar";
-	marker_.id = markers_.markers.size() + 1;
+	marker_.id = markers_.markers.size() + i;
 	marker_.action = visualization_msgs::Marker::ADD;
 	marker_.scale.x = 0.02;
-	marker_.color.a = 0.5;
+	marker_.color.a = 0.2;
 	marker_.color.r = c[0];
 	marker_.color.g = c[1];
 	marker_.color.b = c[2];
@@ -215,29 +176,23 @@ void RRTStar::plotLine(std::vector<double> x1, std::vector<double> x2, std::vect
 void RRTStar::generate_path()
 {
 	// Plot the final path if it exists
-	geometry_msgs::PoseStamped pose;
-
-	pose.pose.position.z = 0;
-	pose.pose.orientation.x = 0;
-	pose.pose.orientation.y = 0;
-	pose.pose.orientation.z = 0;
-	pose.pose.orientation.w = 1;
-
 	int idx = graph_.size() - 1;
 
 	double total_cost = 0.;
 
 	node tmp = graph_[idx];
-
+	std::cout << ">> Path found! Nodes:" << std::endl;
 	while (tmp.idx != -1)
 	{
-		pose.pose.position.x = tmp.pose[0];
-		pose.pose.position.y = tmp.pose[1];
-		path_.poses.push_back(pose);
+		std::cout << "Node " << tmp.idx << " with cost " << tmp.cost << std::endl;
+		path_.push_back(tmp);
 		total_cost += tmp.cost;
+		if (tmp.parent == -1)
+			break;
 		plotLine(tmp.pose, graph_[tmp.parent].pose, {0.5, 0.5, 0.5}, 0.1);
 		tmp = graph_[tmp.parent];
 	}
+	std::cout << ">> Total cost: " << total_cost << std::endl;
 	graph_.back().cost = total_cost;
 }
 
@@ -348,7 +303,6 @@ bool RRTStar::checkRectangleIntersection(std::vector<double> parent, std::vector
 		// Collision Check
 		if (bottom || left || right || top)
 		{
-			ROS_INFO("Collision Detected");
 			return false;
 		}
 	}
@@ -359,7 +313,6 @@ bool RRTStar::checkRectangleIntersection(std::vector<double> parent, std::vector
 	}
 	else
 	{
-		ROS_INFO("Collision Detected");
 		return false;
 	}
 }
@@ -414,8 +367,6 @@ void RRTStar::expandGraph(std::vector<double> x_r, int goal)
 	node closest_node, possible_node;
 	closest_node = closest(x_r);
 
-	ROS_INFO("Closest Node: %f, %f", closest_node.pose[0], closest_node.pose[1]);
-
 	std::vector<double> p(x_r.size(), 0.0);
 	double norm = euclideanDistance(x_r, closest_node.pose);
 
@@ -442,12 +393,9 @@ void RRTStar::expandGraph(std::vector<double> x_r, int goal)
 	possible_node.pose = p;
 	possible_node.parent = closest_node.idx;
 
-	ROS_INFO("Possible Node: %f, %f", possible_node.pose[0], possible_node.pose[1]);
-
 	// Check if the possible node is in collision with the obstacles (Spheres, for now)
 	if (feasible(possible_node))
 	{
-		ROS_INFO("Node feasible");
 		// Find the nearest set of nodes to the possible node
 		std::vector<node> nearest_set = nearestSet(possible_node);
 		// Set the cost of the possible node to the cost of the closest node + the distance between them
@@ -474,8 +422,135 @@ void RRTStar::checkEnd()
 	}
 }
 
+void RRTStar::bezier_curve_generator()
+{
+	/*
+	Reference:
+	- https://en.wikipedia.org/wiki/B%C3%A9zier_curve
+	- https://www.geeksforgeeks.org/cubic-bezier-curve-implementation-in-c/
+	- https://en.wikipedia.org/wiki/De_Casteljau%27s_algorithm
+
+	Bezier curve form:
+	P(u) = sum(i=0,3) Bi,n(u) * Pi
+	Where:
+	Bi,n(u) = Bernstein polynomial of degree n and index i and u is the variable between 0 and 1
+	So a bezier curve is defined by a set of control points P0 to Pn
+	where n is called its order(n = 1 for linear, n = 2 for quadratic, n = 3 for cubic)
+	Cubic Bezier curve is defined by 4 control points P0 to P3:
+
+	P(u) = (1-u)^3 * P0 + 3u(1-u)^2 * P1 + 3u^2(1-u) * P2 + u^3 * P3
+
+	B0(u) = (1-u)^3
+
+	B1(u) = (3u^3 - 6u^2 + 4)
+
+	B2(u) = (-3u^3 + 3u^2 + 3u + 1)
+
+	B3(u) = u^3
+
+
+	So:
+
+	x(u) = (1-u)^3 * x0 + 3u(1-u)^2 * x1 + 3u^2(1-u) * x2 + u^3 * x3
+	y(u) = (1-u)^3 * y0 + 3u(1-u)^2 * y1 + 3u^2(1-u) * y2 + u^3 * y3
+
+	We then divide eaxh Bernstein polynomial by 6. This is because the sum of the Bernstein polynomials is 6. 
+	*/
+
+	std::vector<double> x;
+	std::vector<double> y;
+
+	float Px, Py;
+	float B0, B1, B2, B3;
+
+	int steps = 10;
+	int n_points = path_.size();
+
+	for (int i = 0; i < path_.size(); ++i)
+	{
+		x.push_back(path_[i].pose[0]);
+		y.push_back(path_[i].pose[1]);
+	}
+
+	for (int i = 0; i < n_points - 3; i++)
+	{
+		for (int j = 0; j <= steps; j++)
+		{
+			float u = float(j) / float(steps);
+
+			//Calculate Bernstein polynomials
+			B0 = float(pow(1-u, 3)/6);
+
+			B1 = float((3 * pow(u, 3) - 6 * pow(u, 2) + 4)/6);
+
+			B2 = float((-3 * pow(u, 3) + 3 * pow(u, 2) + 3 * u + 1)/6);
+
+			B3 = float(pow(u, 3)/6);
+
+			//Calculate x and y coordinates
+			Px = B0 * x[i] + B1 * x[i + 1] + B2 * x[i + 2] + B3 * x[i + 3];
+
+			Py = B0 * y[i] + B1 * y[i + 1] + B2 * y[i + 2] + B3 * y[i + 3];
+
+			geometry_msgs::Point tmp_point;
+			tmp_point.x = Px;
+			tmp_point.y = Py;
+			tmp_point.z = 0;
+
+			smoothed_path_.push_back(tmp_point);
+		}
+	}
+}
+
+void RRTStar::send_path()
+{
+	nav_msgs::Path path_msg;
+	geometry_msgs::PoseStamped pose;
+
+	pose.pose.position.z = 0;
+	pose.pose.orientation.x = 0;
+	pose.pose.orientation.y = 0;
+	pose.pose.orientation.z = 0;
+	pose.pose.orientation.w = 1;
+
+	for (int i = 0; i < smoothed_path_.size(); i++)
+	{
+		pose.pose.position.x = smoothed_path_[i].x;
+		pose.pose.position.y = smoothed_path_[i].y;
+
+		path_msg.poses.push_back(pose);
+	}
+
+	path_pub_.publish(path_msg);
+	std::cout << "=========================" << std::endl;
+	std::cout << "===> Path published! <===" << std::endl;
+	std::cout << "=========================" << std::endl;
+}
+
+void RRTStar::add_final_path(geometry_msgs::Point curr, geometry_msgs::Point next)
+{
+	final_edge_.type = visualization_msgs::Marker::LINE_LIST;
+	final_edge_.header.frame_id = "map";
+	final_edge_.header.stamp = ros::Time::now();
+	final_edge_.ns = "final_path";
+	final_edge_.id = -4;
+	final_edge_.action = visualization_msgs::Marker::ADD;
+	final_edge_.pose.orientation.w = 1;
+
+	final_edge_.scale.x = 0.04;
+
+	final_edge_.color.g = final_edge_.color.r = 1;
+	final_edge_.color.a = 1.0;
+
+	final_edge_.points.push_back(curr);
+	final_edge_.points.push_back(next);
+
+	marker_pub_.publish(final_edge_);
+}
+
 void RRTStar::solve()
 {
+	auto t1 = std::chrono::high_resolution_clock::now();
 	// Cycle for it_max_ iterations
 	while (graph_.size() < it_max_ && ros::ok())
 	{
@@ -492,34 +567,53 @@ void RRTStar::solve()
 		}
 		expandGraph(x_r); // Expand the graph
 		ros::Duration(0.01).sleep();
-		ROS_INFO("Size graph %i", int(graph_.size()));
+		std::cout << ">> Iteration: " << int(graph_.size()) << std::endl;
 	}
-	while (ros::ok)
-	{
 
-	}
 	// After it_max_ iterations, check if the goal is reached
 	checkEnd();
 
 	if (finish_)
 	{
+		geometry_msgs::Pose tmp_pose;
 		generate_path();
-		ROS_INFO("Total cost %f", graph_.back().cost);
+
+		std::reverse(path_.begin(), path_.end());
+
+		for (int i = 0; i < 2; i++)
+		{
+			path_.insert(path_.begin(), path_[0]);
+		}
+
+		for (int i = 0; i < 3; i++)
+		{
+			path_.push_back(path_.back());
+		}
+
+		std::cout << ">> Smoothing path..." << std::endl;
+		bezier_curve_generator();
+
+		geometry_msgs::Point tmp_curr;
+		geometry_msgs::Point tmp_next;
+
+		for (int i = 0; i < smoothed_path_.size() - 1; i++)
+		{
+			tmp_curr = smoothed_path_[i];
+			tmp_next = smoothed_path_[i + 1];
+
+			add_final_path(tmp_curr, tmp_next);
+			//plotLine({tmp_curr.x, tmp_curr.y}, {tmp_next.x, tmp_next.y}, {1, 1, 0}, 5);
+		}
+
+		send_path();
 	}
 	else
 	{
-		ROS_ERROR("Path not found!");
+		ROS_WARN("Path not found!");
 	}
-	std::cout << "Press Entert to delete all markers...";
-	char a;
-	std::cin >> a;
-
-	for (auto &m : markers_.markers)
-	{
-		m.action = 3; // Action 3 is to delete the marker
-	}
-	marker_pub_.publish(markers_);
-	ros::shutdown();
+	auto t2 = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> ms_double = t2 - t1;
+	std::cout << ">> Total time taken: " << ms_double.count() << " ms" << std::endl;
 }
 void RRTStar::obstaclesCallback(const visualization_msgs::MarkerArray::ConstPtr& msg)
 {
@@ -527,10 +621,7 @@ void RRTStar::obstaclesCallback(const visualization_msgs::MarkerArray::ConstPtr&
 	{
 		if (msg->markers[i].id == -100 && obs_1_received_ == false)
 		{
-			ROS_INFO("Obstacle 1 received: ");
-			ROS_INFO("Center: %f, %f", msg->markers[i].pose.position.x, msg->markers[i].pose.position.y);
-			ROS_INFO("Scale x: %f", msg->markers[i].scale.x);
-			ROS_INFO("Scale y: %f", msg->markers[i].scale.y);
+			std::cout << ">> Obstacle 1 received!" << std::endl;
 			rectangle_obstacle obs;
 			obs.center = {msg->markers[i].pose.position.x, msg->markers[i].pose.position.y};
 			obs.x_scale_ = msg->markers[i].scale.x;
@@ -541,10 +632,7 @@ void RRTStar::obstaclesCallback(const visualization_msgs::MarkerArray::ConstPtr&
 		}
 		else if (msg->markers[i].id == -101 && obs_2_received_ == false)
 		{
-			ROS_INFO("Obstacle 2 received!");
-			ROS_INFO("Center: %f, %f", msg->markers[i].pose.position.x, msg->markers[i].pose.position.y);
-			ROS_INFO("Scale x: %f", msg->markers[i].scale.x);
-			ROS_INFO("Scale y: %f", msg->markers[i].scale.y);
+			std::cout << ">> Obstacle 2 received!" << std::endl;
 			rectangle_obstacle obs;
 			obs.center = {msg->markers[i].pose.position.x, msg->markers[i].pose.position.y};
 			obs.x_scale_ = msg->markers[i].scale.x;
@@ -596,7 +684,7 @@ void RRTStar::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& data)
 		}
 		else
 		{
-			ROS_INFO("Goal received!");
+			std::cout << ">> Goal received!" << std::endl;
 			goal_received_ = true;
 		}
 	}
@@ -610,7 +698,7 @@ void RRTStar::a1PoseCallback(const nav_msgs::Odometry::ConstPtr& data)
 
 		init_received_ = true;
 
-		ROS_INFO("Initial position received!");
+		std::cout << ">> Initial position received!" << std::endl;
 	}
 }
 void RRTStar::spinner()
