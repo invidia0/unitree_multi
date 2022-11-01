@@ -9,7 +9,6 @@ int main(int argc, char **argv)
 
 	while (ros::ok())
 	{
-
 		ce.spinner();
 		r.sleep();
 	}

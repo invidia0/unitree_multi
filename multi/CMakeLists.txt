@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
+add_compile_options(-std=c++11)
 project(multi)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -8,13 +9,22 @@ find_package(catkin REQUIRED COMPONENTS
   tf
 )
 
+find_package(Eigen3 REQUIRED)
+
 catkin_package(
    INCLUDE_DIRS src
    CATKIN_DEPENDS roscpp geometry_msgs nav_msgs tf
 )
 
-include_directories(${catkin_INCLUDE_DIRS}
-                    include)
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
+  include
+)
+
+add_executable(rrt_star src/rrt_star_node.cpp src/rrt_star.cpp)
+target_link_libraries(rrt_star ${catkin_LIBRARIES})
+add_dependencies(rrt_star ${catkin_EXPORTED_TARGETS})
 
 add_executable(nav src/nav.cpp)
 target_link_libraries(nav ${catkin_LIBRARIES})

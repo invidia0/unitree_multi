@@ -3,7 +3,7 @@
 
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
@@ -22,55 +22,67 @@ struct sphere_obstacle
 	std::vector<double> center;
 	double radius;
 };
+struct rectangle_obstacle
+{
+	std::vector<double> center;
+	double x_scale_;
+	double y_scale_;
+	double z_scale_;
+};
 
 class RRTStar
 {
 public:
 	RRTStar();
-	RRTStar(std::vector<double> x_start, std::vector<double> x_goal, double epsilon, double d, std::vector<int> lim, std::vector<sphere_obstacle> obstacles, int it_max);
 	void spinner(void);
-
-private:
 	void bringup();
 	void initialize();
-	void plotPoint(std::vector<double> x, std::vector<double> c = {1, 0.5, 0}, double s = 30);
+	void plotPoint();
 	void plotObstacles();
 	void plotLine(std::vector<double> x1, std::vector<double> x2, std::vector<double> c = {0, 0.2, 0.8}, double w = 1.5);
-	void plotPath();
+	void generate_path();
 	std::vector<double> randomPoint();
 	double euclideanDistance(std::vector<double> x1, std::vector<double> x2);
 	node closest(std::vector<double> x);
 	std::vector<node> nearestSet(node new_node);
-	int checkSphereIntersection(std::vector<double> x1, std::vector<double> x2, sphere_obstacle o);
-	int checkCollision(node possible_node);
-	int checkCollision(node node1, node node2);
+	bool intersect(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4);
+	// int RRTStar::checkSphereIntersection(std::vector<double> x1, std::vector<double> x2, sphere_obstacle o);
+	bool checkRectangleIntersection(std::vector<double> x1, std::vector<double> x2);
+	bool feasible(node possible_node);
+	bool feasible(node node1, node node2);
 	void cheapest(node &new_node, std::vector<node> nearest_set);
 	void rewiring(node new_node, std::vector<node> nearest_set);
 	void expandGraph(std::vector<double> x_r, int goal = 0);
 	void checkEnd();
 	void solve();
+	void obstaclesCallback(const visualization_msgs::MarkerArray::ConstPtr& msg);
+	void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& data);
+	void a1PoseCallback(const nav_msgs::Odometry::ConstPtr& data);
+	bool goal_feasible();
+private:
+	std::vector<int> lim_;
+	std::vector<rectangle_obstacle> obstacles_;
 	ros::NodeHandle nh_;
 	ros::Publisher marker_pub_;
 	ros::Subscriber a1_pose_sub_, obs_sub_, goal_sub_;
 	visualization_msgs::MarkerArray markers_;
+	visualization_msgs::Marker marker_;
 	std::vector<node> graph_;
 	std::vector<double> x_start_;
 	std::vector<double> x_goal_;
-	std::vector<nav_msgs::Path> path_;
-	std::vector<visualization_msgs::Marker> obstacles_;
+	nav_msgs::Path path_;
 	double epsilon_;
 	double d_;
 	double mu_free_;
 	double z_d_;
-	std::vector<int> lim_;
 	//std::vector<sphere_obstacle> obstacles_;
 	int it_max_;
 	bool finish_;
 	int it_;
-	bool goal_received_;
-	bool init_received_;
-	bool obs_1_received_;
-	bool obs_2_received_;
+	bool goal_received_ = false;
+	bool init_received_ = false;
+	bool obs_1_received_ = false;
+	bool obs_2_received_ = false;
 };
 
 #endif /* RRTSTAR_H */

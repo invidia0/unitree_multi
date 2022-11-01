@@ -29,8 +29,8 @@ public:
         obs1.ns = obs2.ns = "obstacles";
         obs1.action = obs2.action = visualization_msgs::Marker::ADD;
 
-        obs1.id = 100;
-        obs2.id = 101;
+        obs1.id = -100;
+        obs2.id = -101;
 
         obs1.scale.x = 1.0;
         obs1.scale.y = 2.0;
