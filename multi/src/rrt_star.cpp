@@ -3,7 +3,7 @@
 RRTStar::RRTStar()
 {
 	// Max number of iterations.
-	it_max_ = 500;
+	it_max_ = 1000;
 	
 	// epsilon_ = distance between nodes
 	epsilon_ = 1.0;
@@ -57,6 +57,8 @@ void RRTStar::bringup()
 		ros::spinOnce();
 		if (goal_received_ && init_received_ && obs_1_received_ && obs_2_received_)
 		{
+			obs_sub_.shutdown();
+			goal_sub_.shutdown();
 			break;
 		}
 	}
@@ -175,18 +177,17 @@ void RRTStar::generate_path()
 	double total_cost = 0.;
 
 	node tmp = graph_[idx];
-	std::cout << ">> Path found! Nodes:" << std::endl;
+	//std::cout << ">> Path found! Nodes:" << std::endl;
 	while (tmp.idx != -1)
 	{
-		std::cout << "Node " << tmp.idx << " with cost " << tmp.cost << std::endl;
+		//std::cout << "Node " << tmp.idx << " with cost " << tmp.cost << std::endl;
 		path_.push_back(tmp);
 		total_cost += tmp.cost;
 		if (tmp.parent == -1)
 			break;
-		plotLine(tmp.pose, graph_[tmp.parent].pose, {0.5, 0.5, 0.5}, 0.1);
 		tmp = graph_[tmp.parent];
 	}
-	std::cout << ">> Total cost: " << total_cost << std::endl;
+	//std::cout << ">> Total cost: " << total_cost << std::endl;
 	graph_.back().cost = total_cost;
 }
 
@@ -350,7 +351,10 @@ void RRTStar::rewiring(node new_node, std::vector<node> nearest_set)
 			int idx = n.idx;
 			graph_[idx].cost = new_node.cost + norm;
 			graph_[idx].parent = new_node.idx;
-			plotLine(new_node.pose, n.pose, {0.5, 0.5, 1});
+			if (it_max_ < 1)
+			{
+				plotLine(new_node.pose, n.pose, {0.5, 0.5, 1});
+			}
 		}
 	}
 }
@@ -399,7 +403,10 @@ void RRTStar::expandGraph(std::vector<double> x_r, int goal)
 		cheapest(possible_node, nearest_set);
 		// Add the possible node to the graph
 		graph_.push_back(possible_node);
-		plotLine(possible_node.pose, closest_node.pose);
+		if (it_max_ < 1)
+		{
+			plotLine(possible_node.pose, closest_node.pose);
+		}
 		// Rewire the tree in the neighborhood of the new node to minimize the cost.
 		rewiring(possible_node, nearest_set);
 	}
@@ -516,9 +523,9 @@ void RRTStar::send_path()
 	}
 
 	path_pub_.publish(path_msg);
-	std::cout << "=========================" << std::endl;
-	std::cout << "===> Path published! <===" << std::endl;
-	std::cout << "=========================" << std::endl;
+	//std::cout << "=========================" << std::endl;
+	//std::cout << "===> Path published! <===" << std::endl;
+	//std::cout << "=========================" << std::endl;
 }
 
 void RRTStar::add_final_path(geometry_msgs::Point curr, geometry_msgs::Point next)
@@ -560,7 +567,7 @@ void RRTStar::solve()
 			x_r = randomPoint();
 		}
 		expandGraph(x_r); // Expand the graph
-		std::cout << ">> Iteration: " << int(graph_.size()) << std::endl;
+		//std::cout << ">> Iteration: " << int(graph_.size()) << std::endl;
 	}
 
 	// After it_max_ iterations, check if the goal is reached
@@ -583,7 +590,7 @@ void RRTStar::solve()
 			path_.push_back(path_.back());
 		}
 
-		std::cout << ">> Smoothing path..." << std::endl;
+		//std::cout << ">> Smoothing path..." << std::endl;
 		bezier_curve_generator();
 
 		geometry_msgs::Point tmp_curr;
@@ -595,7 +602,6 @@ void RRTStar::solve()
 			tmp_next = smoothed_path_[i + 1];
 
 			add_final_path(tmp_curr, tmp_next);
-			//plotLine({tmp_curr.x, tmp_curr.y}, {tmp_next.x, tmp_next.y}, {1, 1, 0}, 5);
 		}
 
 		send_path();
