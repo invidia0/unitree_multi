@@ -65,14 +65,8 @@ void RRTStar::bringup()
 
 void RRTStar::initialize()
 {
-	// Publisher for the tree graph
-	ros::Duration(1).sleep();
-
 	// Add the start node to the tree
 	plotPoint();
-
-	// Plot the obstacles on the map
-	// plotObstacles();
 
 	// This should be improved
 	mu_free_ = 1.;
@@ -566,7 +560,6 @@ void RRTStar::solve()
 			x_r = randomPoint();
 		}
 		expandGraph(x_r); // Expand the graph
-		ros::Duration(0.01).sleep();
 		std::cout << ">> Iteration: " << int(graph_.size()) << std::endl;
 	}
 
