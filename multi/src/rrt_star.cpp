@@ -52,11 +52,13 @@ void RRTStar::bringup()
 
 	std::cout << ">> Subscribers and publishers initialized" << std::endl;
 	std::cout << ">> Waiting for the robot pose, goal and obstacles..." << std::endl;
+
 	while (ros::ok)
 	{
 		ros::spinOnce();
 		if (goal_received_ && init_received_ && obs_1_received_ && obs_2_received_)
 		{
+			//Dropping unnecessary subscribers
 			obs_sub_.shutdown();
 			goal_sub_.shutdown();
 			break;
@@ -100,8 +102,35 @@ void RRTStar::initialize()
 	finish_ = false;
 
 	// How many iterations
-	std::cout << ">> Insert maximum iteration number: ";
+	std::cout << ">> Insert maximum iteration number (>50): ";
 	std::cin >> it_max_;
+	if (it_max_ >= 200)
+	{
+		std::cout << ">> Maximum iteration number is > 200! Plotting the tree may cause lag! " << std::endl;
+	}
+	
+	char tmp;
+
+	while (ros::ok)
+	{
+		std::cout << ">> Do you want to plot the tree? [y/N] ";
+		std::cin >> tmp;
+
+		if (tmp == 'y' || tmp == 'Y')
+		{
+			plots_ = true;
+			break;
+		}
+		else if (tmp == 'n' || tmp == 'N')
+		{
+			plots_ = false;
+			break;
+		}
+		else
+		{
+			std::cout << ">> Wrong input! Try again." << std::endl;
+		}
+	}
 
 	// Solve the graph
 	solve();
@@ -322,7 +351,6 @@ bool RRTStar::feasible(node possible_node)
 bool RRTStar::feasible(node node1, node node2)
 {
 	// Check if the new node is in collision with the obstacles
-
 	return checkRectangleIntersection(node2.pose, node1.pose);
 }
 
@@ -351,7 +379,7 @@ void RRTStar::rewiring(node new_node, std::vector<node> nearest_set)
 			int idx = n.idx;
 			graph_[idx].cost = new_node.cost + norm;
 			graph_[idx].parent = new_node.idx;
-			if (it_max_ < 1)
+			if (plots_)
 			{
 				plotLine(new_node.pose, n.pose, {0.5, 0.5, 1});
 			}
@@ -403,7 +431,7 @@ void RRTStar::expandGraph(std::vector<double> x_r, int goal)
 		cheapest(possible_node, nearest_set);
 		// Add the possible node to the graph
 		graph_.push_back(possible_node);
-		if (it_max_ < 1)
+		if (plots_)
 		{
 			plotLine(possible_node.pose, closest_node.pose);
 		}
@@ -567,7 +595,6 @@ void RRTStar::solve()
 			x_r = randomPoint();
 		}
 		expandGraph(x_r); // Expand the graph
-		//std::cout << ">> Iteration: " << int(graph_.size()) << std::endl;
 	}
 
 	// After it_max_ iterations, check if the goal is reached
@@ -590,7 +617,6 @@ void RRTStar::solve()
 			path_.push_back(path_.back());
 		}
 
-		//std::cout << ">> Smoothing path..." << std::endl;
 		bezier_curve_generator();
 
 		geometry_msgs::Point tmp_curr;

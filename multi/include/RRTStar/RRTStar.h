@@ -3,7 +3,6 @@
 
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <eigen3/Eigen/Dense>
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
@@ -87,6 +86,7 @@ private:
 	bool init_received_ = false;
 	bool obs_1_received_ = false;
 	bool obs_2_received_ = false;
+	bool plots_ = false;
 };
 
 #endif /* RRTSTAR_H */
