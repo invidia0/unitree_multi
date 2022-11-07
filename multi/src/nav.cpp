@@ -25,7 +25,6 @@ private:
     double ccw_check, cw_check;
     bool aligned = false, path_received = false;
     bool check = false;
-
     float ANGULAR_SPEED, LINEAR_SPEED;
     float ANGULAR_THRESHOLD = 1 * M_PI / 180;
     float LINEAR_THRESHOLD = 0.2;
@@ -153,15 +152,11 @@ public:
         {
             targetRPY(i);
 
-            // desidered_angle();
-
-            // turn(theta_des);
-
             twist_msg.linear.y = 0;
 
             double dist;
 
-            ROS_INFO("Moving to target...");
+            ROS_INFO_ONCE("Moving to target...");
 
             while (ros::ok)
             {
@@ -204,7 +199,6 @@ public:
                 }
             }
         }
-        std::cout << "Aligning to final orientation..." << std::endl;
         //turn(targetYaw);
     }
     void run()

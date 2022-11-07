@@ -34,17 +34,9 @@ add_executable(world_br src/world_br.cpp)
 target_link_libraries(world_br ${catkin_LIBRARIES})
 add_dependencies(world_br ${catkin_EXPORTED_TARGETS})
 
-add_executable(path_visualizer src/path_visualizer.cpp)
-target_link_libraries(path_visualizer ${catkin_LIBRARIES})
-add_dependencies(path_visualizer ${catkin_EXPORTED_TARGETS})
-
 add_executable(obstacles_generator src/obstacles_generator.cpp)
 target_link_libraries(obstacles_generator ${catkin_LIBRARIES})
 add_dependencies(obstacles_generator ${catkin_EXPORTED_TARGETS})
-
-add_executable(planner src/planner.cpp)
-target_link_libraries(planner ${catkin_LIBRARIES})
-add_dependencies(planner ${catkin_EXPORTED_TARGETS})
 
 
 install(DIRECTORY src
