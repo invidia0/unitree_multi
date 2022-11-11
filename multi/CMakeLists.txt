@@ -26,6 +26,10 @@ add_executable(rrt_star src/rrt_star_node.cpp src/rrt_star.cpp)
 target_link_libraries(rrt_star ${catkin_LIBRARIES})
 add_dependencies(rrt_star ${catkin_EXPORTED_TARGETS})
 
+add_executable(apf src/apf_node.cpp src/apf.cpp)
+target_link_libraries(apf ${catkin_LIBRARIES})
+add_dependencies(apf ${catkin_EXPORTED_TARGETS})
+
 add_executable(nav src/nav.cpp)
 target_link_libraries(nav ${catkin_LIBRARIES})
 add_dependencies(nav ${catkin_EXPORTED_TARGETS})
